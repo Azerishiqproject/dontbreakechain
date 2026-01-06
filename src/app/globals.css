@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-roboto-serif: "Roboto Serif", serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Roboto Serif", serif;
+  background-image: url('/bg-image.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: -1;
+  pointer-events: none;
+}
+
+* {
+  font-family: "Roboto Serif", serif;
+}
+
+/* Laser Chain Animations */
+@keyframes laser-ignite {
+  0% { stroke-dashoffset: 3000; opacity: 0; }
+  40% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes laser-hum {
+  0%, 100% { stroke-width: 40; opacity: 0.08; filter: blur(20px); }
+  50% { stroke-width: 48; opacity: 0.15; filter: blur(28px); }
+}
+
+@keyframes electric-pulse {
+  0% { 
+    stroke-dashoffset: 0;
+    opacity: 0.8;
+    filter: brightness(1);
+  }
+  50% { 
+    stroke-dashoffset: -100;
+    opacity: 1;
+    filter: brightness(1.5);
+  }
+  100% { 
+    stroke-dashoffset: -200;
+    opacity: 0.8;
+    filter: brightness(1);
+  }
+}
+
+@keyframes electric-flow {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -45; /* dashLength + gapLength */
+  }
+}
+
+@keyframes electric-flow-reverse {
+  0% {
+    stroke-dashoffset: 45; /* dashLength + gapLength */
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes subtle-glow {
+  0%, 100% { 
+    filter: brightness(1) drop-shadow(0 0 8px currentColor);
+  }
+  50% { 
+    filter: brightness(1.15) drop-shadow(0 0 16px currentColor);
+  }
+}
+
+.laser-core {
+  animation: electric-flow 1.5s linear infinite;
+  filter: drop-shadow(0 0 16px rgba(255, 255, 255, 1)) drop-shadow(0 0 8px currentColor);
+}
+
+.electric-pulse {
+  animation: electric-flow 1.5s linear infinite;
+}
+
+.laser-glow-ultra-wide {
+  animation: laser-hum 4s infinite ease-in-out;
+  filter: blur(20px);
+}
+
+.electric-pulse {
+  animation: electric-pulse 1.5s ease-in-out infinite;
+}
+
+.node-base {
+  transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.node-glow {
+  animation: subtle-glow 3s infinite ease-in-out;
+}
+
+.day-node:hover .node-base {
+  transform: translateY(-6px) scale(1.15);
+  background: rgba(51, 65, 85, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 15px 30px rgba(0,0,0,0.3) !important;
+}
+
+.laser-glow-mid {
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 
+    0 8px 32px 0 rgba(31, 38, 135, 0.37),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  pointer-events: none;
+}
