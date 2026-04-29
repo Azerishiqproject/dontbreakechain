@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { format, addDays, parseISO } from 'date-fns';
-import { ChevronLeft, Zap, Target, Sparkles, Trash2, FileText, X } from 'lucide-react';
+import { ChevronLeft, Zap, Target, Sparkles, Trash2, FileText, X, Settings } from 'lucide-react';
 import { useHabitStore } from '@/store/habitStore';
 import { isCompletedOnDate, calculateStreakByDays } from '@/utils/streak';
 
@@ -12,8 +12,10 @@ export default function HabitDetailPage() {
   const params = useParams();
   const router = useRouter();
   const habitId = params.id as string;
-  const { habits, fetchHabits, subscribeToHabits, toggleDay, deleteHabit } = useHabitStore();
+  const { habits, fetchHabits, subscribeToHabits, toggleDay, deleteHabit, updateHabit } = useHabitStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [editStreakType, setEditStreakType] = useState<'flexible' | 'strict'>('flexible');
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [containerWidth, setContainerWidth] = useState(800);
@@ -86,6 +88,21 @@ export default function HabitDetailPage() {
     const day = days[dayNumber - 1];
     if (!day) return;
     
+    // Strict mode logic
+    if (habit.streak_type === 'strict') {
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      
+      if (day.dateStr > todayStr) {
+        alert("Strict Mode: You cannot complete future days.");
+        return;
+      }
+      
+      if (day.dateStr < todayStr && !day.completed) {
+        alert("Strict Mode: You missed this day! You cannot complete it retroactively.");
+        return;
+      }
+    }
+    
     // Not modal'ını aç
     const existingLog = habit.logs.find(log => log.date === day.dateStr);
     setNoteModal({
@@ -142,35 +159,54 @@ export default function HabitDetailPage() {
     router.push('/');
   };
 
-  // Dairelerin pozisyonlarını hesapla - Her satırda tam 10 daire
+  // Dairelerin pozisyonlarını hesapla
   const circleSize = 56;
   const circleRadius = circleSize / 2;
-  const itemsPerRow = 10; // Her satırda tam 10 daire
   
-  const getCirclePosition = (index: number, total: number) => {
+  const getCirclePosition = (index: number, date: Date) => {
     const availableWidth = containerWidth;
+    const isStrict = habit?.streak_type === 'strict';
+    const itemsPerRow = isStrict ? 7 : 10;
     
-    const row = Math.floor(index / itemsPerRow);
-    const col = index % itemsPerRow;
+    let col, row;
+    if (isStrict) {
+      // Pazartesi = 0, Salı = 1, ..., Pazar = 6
+      const dayOfWeek = (date.getDay() + 6) % 7;
+      col = dayOfWeek;
+      const firstDayOfWeek = (startDate.getDay() + 6) % 7;
+      const absoluteIndex = firstDayOfWeek + index;
+      row = Math.floor(absoluteIndex / 7);
+    } else {
+      col = index % itemsPerRow;
+      row = Math.floor(index / itemsPerRow);
+    }
     
     // Daireler arası boşluk hesapla (container genişliğini tam kullan)
     const totalSpacing = availableWidth - (itemsPerRow * circleSize);
     const gap = itemsPerRow > 1 ? totalSpacing / (itemsPerRow - 1) : 0;
     
-    // İlk dairenin merkez pozisyonu (sol kenardan circleRadius kadar içeride)
+    // İlk dairenin merkez pozisyonu
     const startX = circleRadius;
-    const startY = circleRadius + 20; // Üstten 20px padding
+    const startY = circleRadius + (isStrict ? 30 : 20); // Strict mode'da yazılar için ekstra üst boşluk
+    const rowSpacing = isStrict ? 76 : 48; // Strict mode'da yazıların sıkışmaması için satır arası boşluğu artır
     
     return {
       x: startX + col * (circleSize + gap),
-      y: startY + row * (circleSize + 48), // Daire + dikey boşluk (32 * 1.5 = 48)
+      y: startY + row * (circleSize + rowSpacing),
       itemsPerRow,
     };
   };
 
   const positions = useMemo(() => {
-    return days.map((_, index) => getCirclePosition(index, days.length));
-  }, [days.length, containerWidth]);
+    return days.map((day, index) => getCirclePosition(index, day.date));
+  }, [days, containerWidth, startDate, habit?.streak_type]);
+
+  // Container yüksekliğini dinamik hesapla (kesilmeyi önlemek için)
+  const containerHeight = useMemo(() => {
+    if (positions.length === 0) return 400;
+    const maxY = Math.max(...positions.map(p => p.y));
+    return Math.max(400, maxY + circleRadius + 80); // 80px alt boşluk
+  }, [positions]);
 
   // Daire elementinin gerçek DOM pozisyonunu al
   const getDayElementPos = (dayNumber: number) => {
@@ -214,10 +250,8 @@ export default function HabitDetailPage() {
         const p2 = getDayElementPos(next.dayNumber);
 
         if (p1 && p2) {
-          // Satır atlaması kontrolü - Her satırda 10 daire
-          const currentRow = Math.floor((current.dayNumber - 1) / itemsPerRow);
-          const nextRow = Math.floor((next.dayNumber - 1) / itemsPerRow);
-          const isRowJump = nextRow > currentRow;
+          // Satır atlaması kontrolü - Y pozisyonuna göre
+          const isRowJump = Math.abs(p2.y - p1.y) > 10;
           
           let dPath: string;
           if (isRowJump) {
@@ -370,13 +404,25 @@ export default function HabitDetailPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="p-3 hover:bg-red-900/30 rounded-xl text-red-400 hover:text-red-300 transition-all active:scale-75"
-            title="Delete"
-          >
-            <Trash2 size={20} />
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setEditStreakType(habit.streak_type || 'flexible');
+                setShowSettingsModal(true);
+              }}
+              className="p-3 hover:bg-white/10 rounded-xl text-slate-300 hover:text-white transition-all active:scale-75 backdrop-blur-sm"
+              title="Settings"
+            >
+              <Settings size={20} />
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="p-3 hover:bg-red-900/30 rounded-xl text-red-400 hover:text-red-300 transition-all active:scale-75"
+              title="Delete"
+            >
+              <Trash2 size={20} />
+            </button>
+          </div>
         </motion.div>
 
         {/* Delete Confirmation */}
@@ -409,7 +455,8 @@ export default function HabitDetailPage() {
         {/* Daireler Container */}
         <div 
           ref={containerRef}
-          className="glass-panel rounded-[3.5rem] p-10 relative overflow-hidden min-h-[400px]"
+          className="glass-panel rounded-[3.5rem] p-10 relative overflow-hidden bg-black/60 backdrop-blur-3xl border border-white/10"
+          style={{ height: `${containerHeight}px` }}
         >
           {/* Bitirilmiş Seri Parlama Efekti */}
           {isFullyCompleted && (
@@ -486,7 +533,7 @@ export default function HabitDetailPage() {
             height="100%"
             style={{ 
               width: dimensions.width || '100%', 
-              height: dimensions.height || '100%' 
+              height: containerHeight || dimensions.height || '100%' 
             }}
           >
             {renderChainLinks()}
@@ -525,12 +572,18 @@ export default function HabitDetailPage() {
               const left = position.x - circleRadius;
               const top = position.y - circleRadius;
               
+              const isStrict = habit.streak_type === 'strict';
+              const todayStr = format(new Date(), 'yyyy-MM-dd');
+              const isMissed = isStrict && day.dateStr < todayStr && !day.completed;
+              const isFuture = isStrict && day.dateStr > todayStr;
+              const isDisabled = isMissed || isFuture;
+              
               return (
                 <motion.div
                   key={day.dateStr}
                   id={`day-${day.dayNumber}`}
                   onClick={() => handleDayClick(day.dayNumber)}
-                  className="day-node absolute flex flex-col items-center justify-center cursor-pointer group"
+                  className={`day-node absolute flex flex-col items-center justify-center group ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                   style={{
                     left: `${left}px`,
                     top: `${top}px`,
@@ -544,10 +597,17 @@ export default function HabitDetailPage() {
                     damping: 15,
                   }}
                 >
+                  {isStrict && (
+                    <span className={`absolute -top-6 text-[10px] font-black uppercase tracking-widest allura-regular ${isDisabled ? 'text-slate-600' : 'text-slate-400'}`}>
+                      {format(day.date, 'EEE')}
+                    </span>
+                  )}
                   <motion.div 
                     className={`
                       node-base w-14 h-14 rounded-[1.6rem] flex items-center justify-center text-sm font-black z-20 transition-all duration-500 relative overflow-visible
                       ${day.completed ? 'text-white node-glow' : 'bg-white/5 backdrop-blur-md text-slate-400 border border-white/18 shadow-inner'}
+                      ${isMissed ? 'opacity-30 grayscale border-red-500/20' : ''}
+                      ${isFuture ? 'opacity-50' : ''}
                     `}
                     style={day.completed ? {
                       background: `linear-gradient(145deg, ${habit.color} 0%, ${habit.color}dd 100%)`,
@@ -743,6 +803,94 @@ export default function HabitDetailPage() {
               <motion.button
                 type="button"
                 onClick={handleSaveNote}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex-1 rounded-xl px-6 py-3 font-medium text-white transition-all shadow-lg hover:shadow-xl allura-regular"
+                style={{ backgroundColor: habit.color }}
+              >
+                Save
+              </motion.button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md"
+          onClick={() => setShowSettingsModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="glass-panel w-full max-w-md rounded-2xl p-8 shadow-2xl"
+          >
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-black text-white uppercase italic tracking-wider allura-regular">
+                Habit Settings
+              </h2>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="p-2 hover:bg-white/10 rounded-xl text-slate-300 hover:text-white transition-all backdrop-blur-sm"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <label className="mb-2 block text-sm font-medium text-slate-400 allura-regular">
+                Habit Type
+              </label>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => setEditStreakType('flexible')}
+                  className={`flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-all allura-regular ${
+                    editStreakType === 'flexible'
+                      ? 'border-indigo-500 bg-indigo-500/20 text-white'
+                      : 'border-white/18 bg-white/5 text-slate-400 hover:bg-white/10'
+                  }`}
+                >
+                  Flexible Mode
+                  <span className="block text-xs mt-1 opacity-70">Click any day</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditStreakType('strict')}
+                  className={`flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-all allura-regular ${
+                    editStreakType === 'strict'
+                      ? 'border-rose-500 bg-rose-500/20 text-white'
+                      : 'border-white/18 bg-white/5 text-slate-400 hover:bg-white/10'
+                  }`}
+                >
+                  Strict Calendar
+                  <span className="block text-xs mt-1 opacity-70">Miss a day, break chain</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(false)}
+                className="flex-1 rounded-xl border border-white/18 bg-white/5 backdrop-blur-md px-6 py-3 font-medium text-slate-200 transition-all hover:bg-white/10 hover:text-white allura-regular"
+              >
+                Cancel
+              </button>
+              <motion.button
+                type="button"
+                onClick={async () => {
+                  if (habit) {
+                    await updateHabit(habit.habit_id, { streak_type: editStreakType });
+                    setShowSettingsModal(false);
+                  }
+                }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="flex-1 rounded-xl px-6 py-3 font-medium text-white transition-all shadow-lg hover:shadow-xl allura-regular"

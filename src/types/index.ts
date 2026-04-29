@@ -16,6 +16,7 @@ export interface Habit {
   color: string;
   animation_style: 'liquid_connection' | 'default';
   duration: number; // Toplam gün sayısı
+  streak_type?: 'flexible' | 'strict'; // strict: gercekten gunlere enteqre
   logs: HabitLog[];
   streak_data: StreakData;
   created_at: string;
@@ -23,4 +24,5 @@ export interface Habit {
 }
 
 export type HabitFormData = Omit<Habit, 'habit_id' | 'user_id' | 'logs' | 'streak_data' | 'created_at' | 'updated_at'>;
+
 

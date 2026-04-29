@@ -20,6 +20,7 @@ export default function HabitForm({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState('');
   const [color, setColor] = useState(COLORS[0]);
   const [duration, setDuration] = useState(30);
+  const [streakType, setStreakType] = useState<'flexible' | 'strict'>('flexible');
   const addHabit = useHabitStore((state) => state.addHabit);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,10 +32,12 @@ export default function HabitForm({ onClose }: { onClose: () => void }) {
       color,
       animation_style: 'liquid_connection',
       duration: duration,
+      streak_type: streakType,
     });
 
     setTitle('');
     setDuration(30);
+    setStreakType('flexible');
     onClose();
   };
 
@@ -113,6 +116,38 @@ export default function HabitForm({ onClose }: { onClose: () => void }) {
                   style={{ backgroundColor: c }}
                 />
               ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-400 allura-regular">
+              Habit Type
+            </label>
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => setStreakType('flexible')}
+                className={`flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-all allura-regular ${
+                  streakType === 'flexible'
+                    ? 'border-indigo-500 bg-indigo-500/20 text-white'
+                    : 'border-white/18 bg-white/5 text-slate-400 hover:bg-white/10'
+                }`}
+              >
+                Flexible Mode
+                <span className="block text-xs mt-1 opacity-70">Click any day</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStreakType('strict')}
+                className={`flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-all allura-regular ${
+                  streakType === 'strict'
+                    ? 'border-rose-500 bg-rose-500/20 text-white'
+                    : 'border-white/18 bg-white/5 text-slate-400 hover:bg-white/10'
+                }`}
+              >
+                Strict Calendar
+                <span className="block text-xs mt-1 opacity-70">Miss a day, break chain</span>
+              </button>
             </div>
           </div>
 
