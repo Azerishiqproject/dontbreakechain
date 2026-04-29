@@ -253,34 +253,12 @@ export default function HabitDetailPage() {
           // Satır atlaması kontrolü - Y pozisyonuna göre
           const isRowJump = Math.abs(p2.y - p1.y) > 10;
           
-          let dPath: string;
+          // Satır geçişlerinde (Pazar'dan Pazartesi'ye) çizgi çekmek görsel karmaşaya neden olduğu için çizgiyi çizmeyelim
           if (isRowJump) {
-            // Satır değişimi - eğri çizgi (10. günden 11. güne geçiş)
-            // Daha eğimli eğri ki diğer günlerin üzerinden geçsin
-            const rowHeight = p2.y - p1.y;
-            const horizontalDistance = Math.abs(p2.x - p1.x);
-            
-            // Eğriyi daha yüksek yap (dairesel dairelerin üzerinden geçsin)
-            // Kontrol noktaları daha yukarıda ve X ekseninde ortalanmış
-            const curveHeight = rowHeight * 0.7; // Satırlar arası mesafenin %70'i kadar yukarı
-            const curveOffsetX = horizontalDistance * 0.4; // X ekseninde daha fazla kaydır
-            
-            // İlk kontrol noktası: Sağdan yukarı doğru (daha eğimli)
-            const cp1x = p1.x + curveOffsetX;
-            const cp1y = p1.y - curveHeight;
-            
-            // İkinci kontrol noktası: Soldan aşağı doğru (daha eğimli)
-            const cp2x = p2.x - curveOffsetX;
-            const cp2y = p2.y + curveHeight;
-            
-            dPath = `M ${p1.x} ${p1.y} 
-                     C ${cp1x} ${cp1y}, 
-                       ${cp2x} ${cp2y}, 
-                       ${p2.x} ${p2.y}`;
-          } else {
-            // Aynı satırda - düz çizgi
-            dPath = `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
+            continue;
           }
+          
+          const dPath = `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
 
           // Çizgi uzunluğunu hesapla (animasyon için)
           const pathLength = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
